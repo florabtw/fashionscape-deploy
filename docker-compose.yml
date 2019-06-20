@@ -1,0 +1,52 @@
+version: "3"
+services:
+  web:
+    container_name: fashionscape-web
+    image: ncpierson/fashionscape-web:latest
+    labels:
+      - "traefik.backend=fashionscape-web"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:scape.fashion"
+      - "traefik.port=80"
+  api:
+    container_name: fashionscape-api
+    image: ncpierson/fashionscape-api:latest
+    labels:
+      - "traefik.backend=fashionscape-api"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:api.scape.fashion"
+      - "traefik.port=8000"
+    restart: always
+  proxy:
+    command:
+      - "--acme.acmeLogging=true"
+      - "--acme.domains=scape.fashion,api.scape.fashion"
+      - "--acme.email=me@nick.exposed"
+      - "--acme.entryPoint=https"
+      - "--acme.httpChallenge.entryPoint=http"
+      - "--acme.onHostRule=true"
+      - "--acme.storage=acme.json"
+      - "--debug=false"
+      - "--defaultentrypoints=http,https"
+      - "--docker.endpoint=unix:///var/run/docker.sock"
+      - "--docker.watch=true"
+      - "--docker.exposedByDefault=false"
+      - "--entrypoints=Name:http Address::80 Redirect.Entrypoint:https"
+      - "--entrypoints=Name:https Address::443 TLS"
+      - "--logLevel=INFO"
+      - "--retry"
+    container_name: fashionscape-proxy
+    image: traefik
+    ports:
+      - 80:80
+      - 443:443
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/traefik/acme.json:/acme.json
+  watchtower:
+    container_name: watchtower
+    image: v2tec/watchtower:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup
